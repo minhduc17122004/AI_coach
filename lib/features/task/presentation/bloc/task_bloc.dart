@@ -103,13 +103,11 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
           emit(TaskError(failure.message));
         },
         (_) {
-          emit(TaskActionSuccess('Đã thêm công việc thành công'));
-          
           // Lên lịch thông báo nếu task có thời gian
           _scheduleNotificationForTask(event.task);
           
-          // Reload tasks to get fresh data
-          add(const LoadTasksEvent());
+          // Emit success without automatic reload to prevent hanging
+          emit(TaskActionSuccess('Đã thêm công việc thành công'));
         },
       );
     } catch (e) {
@@ -127,8 +125,10 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
   }
 
   Future<void> _onUpdateTask(UpdateTaskEvent event, Emitter<TaskState> emit) async {
+    // Store current state if it's TasksLoaded, otherwise we'll work without it
+    TasksLoaded? currentState;
     if (state is TasksLoaded) {
-      final currentState = state as TasksLoaded;
+      currentState = state as TasksLoaded;
       
       // Hiển thị trạng thái refreshing mà không mất dữ liệu hiện tại
       emit(TaskRefreshing(
@@ -136,72 +136,103 @@ class TaskBloc extends Bloc<TaskEvent, TaskState> {
         completedTasks: currentState.completedTasks,
         currentList: currentState.currentList,
       ));
+    } else {
+      // If not in TasksLoaded state, show loading
+      emit(TaskLoading());
+    }
+    
+    try {
+      final result = await updateTask(event.task);
       
-      try {
-        final result = await updateTask(event.task);
-        
-        result.fold(
-          (failure) {
-            developer.log('Lỗi khi cập nhật công việc: ${failure.message}', name: 'TaskBloc');
-            // Khôi phục state trước đó khi có lỗi
+      result.fold(
+        (failure) {
+          developer.log('Lỗi khi cập nhật công việc: ${failure.message}', name: 'TaskBloc');
+          
+          // Khôi phục state trước đó nếu có, nếu không thì emit error
+          if (currentState != null) {
             emit(currentState);
-            emit(TaskError(failure.message));
-          },
-          (_) async {
-            emit(TaskActionSuccess('Đã cập nhật công việc thành công'));
-            
-            // Hủy thông báo cũ và lên lịch lại nếu cần
-            await _notificationService.cancelTaskNotification(event.task.id);
-            _scheduleNotificationForTask(event.task);
-            
-            add(const LoadTasksEvent());
-          },
-        );
-      } catch (e) {
-        developer.log('Lỗi không xác định khi cập nhật công việc: $e', name: 'TaskBloc');
-        // Khôi phục state trước đó khi có lỗi
+          }
+          emit(TaskError(failure.message));
+        },
+        (_) async {
+          // Hủy thông báo cũ và lên lịch lại nếu cần
+          await _notificationService.cancelTaskNotification(event.task.id);
+          _scheduleNotificationForTask(event.task);
+          
+          // Emit success without automatic reload to prevent hanging
+          emit(TaskActionSuccess('Đã cập nhật công việc thành công'));
+        },
+      );
+    } catch (e) {
+      developer.log('Lỗi không xác định khi cập nhật công việc: $e', name: 'TaskBloc');
+      
+      // Khôi phục state trước đó nếu có, nếu không thì emit error
+      if (currentState != null) {
         emit(currentState);
-        emit(TaskError('Không thể cập nhật công việc: $e'));
       }
+      emit(TaskError('Không thể cập nhật công việc: $e'));
     }
   }
 
   Future<void> _onDeleteTask(DeleteTaskEvent event, Emitter<TaskState> emit) async {
+    developer.log('Starting delete task with ID: ${event.taskId}', name: 'TaskBloc');
+    
+    // Store current state if it's TasksLoaded, otherwise we'll work without it
+    TasksLoaded? currentState;
     if (state is TasksLoaded) {
-      final currentState = state as TasksLoaded;
+      currentState = state as TasksLoaded;
       
-      // Hiển thị trạng thái refreshing mà không mất dữ liệu hiện tại
-      emit(TaskRefreshing(
-        tasks: currentState.tasks,
-        completedTasks: currentState.completedTasks,
+      developer.log('Current state has ${currentState.tasks.length} tasks, ${currentState.completedTasks.length} completed', name: 'TaskBloc');
+      
+      // Optimistic update: remove task from UI immediately
+      final updatedTasks = currentState.tasks.where((task) => task.id != event.taskId).toList();
+      final updatedCompletedTasks = currentState.completedTasks.where((task) => task.id != event.taskId).toList();
+      
+      emit(TasksLoaded(
+        tasks: updatedTasks,
+        completedTasks: updatedCompletedTasks,
         currentList: currentState.currentList,
       ));
+    } else {
+      developer.log('Current state is not TasksLoaded: ${state.runtimeType}', name: 'TaskBloc');
+      // If not in TasksLoaded state, show loading
+      emit(TaskLoading());
+    }
+    
+    try {
+      developer.log('Calling repository delete for task: ${event.taskId}', name: 'TaskBloc');
+      final result = await deleteTask(event.taskId);
       
-      try {
-        final result = await deleteTask(event.taskId);
-        
-        result.fold(
-          (failure) {
-            developer.log('Lỗi khi xóa công việc: ${failure.message}', name: 'TaskBloc');
-            // Khôi phục state trước đó khi có lỗi
+      result.fold(
+        (failure) {
+          developer.log('Repository delete failed: ${failure.message}', name: 'TaskBloc');
+          
+          // Revert optimistic update - khôi phục state trước đó
+          if (currentState != null) {
             emit(currentState);
-            emit(TaskError(failure.message));
-          },
-          (_) async {
-            emit(TaskActionSuccess('Đã xóa công việc thành công'));
-            
-            // Hủy thông báo cho task đã xóa
-            await _notificationService.cancelTaskNotification(event.taskId);
-            
-            add(const LoadTasksEvent());
-          },
-        );
-      } catch (e) {
-        developer.log('Lỗi không xác định khi xóa công việc: $e', name: 'TaskBloc');
-        // Khôi phục state trước đó khi có lỗi
+          }
+          emit(TaskError(failure.message));
+        },
+        (_) async {
+          developer.log('Repository delete succeeded for task: ${event.taskId}', name: 'TaskBloc');
+          
+          // Hủy thông báo cho task đã xóa (non-blocking)
+          _notificationService.cancelTaskNotification(event.taskId).catchError((error) {
+            developer.log('Failed to cancel notification: $error', name: 'TaskBloc');
+          });
+          
+          // Emit success immediately (task already removed optimistically)
+          emit(TaskActionSuccess('Đã xóa công việc thành công'));
+        },
+      );
+    } catch (e) {
+      developer.log('Exception during delete task: $e', name: 'TaskBloc', error: e);
+      
+      // Khôi phục state trước đó nếu có, nếu không thì emit error
+      if (currentState != null) {
         emit(currentState);
-        emit(TaskError('Không thể xóa công việc: $e'));
       }
+      emit(TaskError('Không thể xóa công việc: $e'));
     }
   }
 

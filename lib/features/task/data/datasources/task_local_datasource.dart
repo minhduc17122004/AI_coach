@@ -79,10 +79,26 @@ class TaskLocalDataSourceImpl implements TaskLocalDataSource {
   Future<void> deleteTask(String id) async {
     try {
       final tasks = await getTasks();
+      final initialCount = tasks.length;
+      
+      // Check if task exists before deletion
+      final taskExists = tasks.any((task) => task.id == id);
+      if (!taskExists) {
+        throw Exception('Task with ID $id not found');
+      }
+      
+      // Remove the task
       tasks.removeWhere((task) => task.id == id);
+      final finalCount = tasks.length;
+      
+      // Validate deletion was successful
+      if (initialCount == finalCount) {
+        throw Exception('Task deletion failed - no task was removed');
+      }
+      
       await _saveTasks(tasks);
     } catch (e) {
-      throw Exception('Failed to delete task');
+      throw Exception('Failed to delete task: ${e.toString()}');
     }
   }
 

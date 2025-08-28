@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:taskaholic/core/di/di.dart';
 import 'package:taskaholic/core/themes/app_color.dart';
 import 'package:taskaholic/core/utils/task_date_utils.dart';
 import 'package:taskaholic/features/task/domain/entities/task_entity.dart';
@@ -22,12 +21,10 @@ class TaskFormPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (context) => sl<TaskBloc>(),
-      child: _TaskFormContent(
-        initialCategory: initialCategory,
-        taskToEdit: taskToEdit,
-      ),
+    // Use existing TaskBloc from parent context instead of creating new one
+    return _TaskFormContent(
+      initialCategory: initialCategory,
+      taskToEdit: taskToEdit,
     );
   }
 }
@@ -259,26 +256,60 @@ class _TaskFormContentState extends State<_TaskFormContent> {
 
     showDialog(
       context: context,
+      barrierDismissible: false, // Prevent accidental dismissal
       builder: (context) => AlertDialog(
         backgroundColor: AppColors.backgroundDark,
-        title: const Text('Xác nhận xóa', style: TextStyle(color: AppColors.textOnPrimary)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+        ),
+        title: const Row(
+          children: [
+            Icon(Icons.warning, color: AppColors.error, size: 24),
+            SizedBox(width: 8),
+            Text(
+              'Xác nhận xóa', 
+              style: TextStyle(color: AppColors.textOnPrimary, fontWeight: FontWeight.w600),
+            ),
+          ],
+        ),
         content: Text(
-          'Bạn có chắc chắn muốn xóa nhiệm vụ "${widget.taskToEdit!.title}"?',
+          'Bạn có chắc chắn muốn xóa nhiệm vụ "${widget.taskToEdit!.title}"?\n\nHành động này không thể hoàn tác.',
           style: const TextStyle(color: AppColors.textOnPrimary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Hủy', style: TextStyle(color: AppColors.textOnPrimary)),
+            child: const Text(
+              'Hủy', 
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
           ),
-          TextButton(
+          ElevatedButton(
             onPressed: () {
               Navigator.pop(context); // Close dialog
+              
+              // Set loading state
+              setState(() {
+                _isLoading = true;
+              });
+              
+              // Debug logging
+              print('Debug: Deleting task with ID: ${widget.taskToEdit!.id}');
+              print('Debug: Task title: ${widget.taskToEdit!.title}');
               
               // Delete task through bloc
               context.read<TaskBloc>().add(DeleteTaskEvent(widget.taskToEdit!.id));
             },
-            child: const Text('Xóa', style: TextStyle(color: AppColors.error)),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppColors.error,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+            child: const Text(
+              'Xóa', 
+              style: TextStyle(color: AppColors.textOnPrimary),
+            ),
           ),
         ],
       ),
@@ -304,7 +335,7 @@ class _TaskFormContentState extends State<_TaskFormContent> {
               ),
             );
             
-            // Add small delay to ensure task is fully saved before closing
+            // Add small delay to ensure action is fully completed before closing
             Future.delayed(const Duration(milliseconds: 300), () {
               if (mounted) {
                 Navigator.pop(context);
@@ -327,24 +358,25 @@ class _TaskFormContentState extends State<_TaskFormContent> {
         }
       },
       child: WillPopScope(
-        onWillPop: () async {
-          // Check for unsaved changes
-          if (_hasUnsavedChanges() && !_isLoading) {
-            final shouldSave = await _showUnsavedChangesDialog();
-            
-            if (shouldSave == true) {
-              // User chose "Lưu"
-              _handleSave();
-              return false; // Let bloc handle navigation after save
-            } else {
+            onWillPop: () async {
+              // Check for unsaved changes
+              if (_hasUnsavedChanges() && !_isLoading) {
+                final shouldSave = await _showUnsavedChangesDialog();
+                
+                if (shouldSave == true) {
+                  // User chose "Lưu"
+                  _handleSave();
+                  return false; // Let bloc handle navigation after save
+                } else {
+                  // User chose "Hủy" - discard changes and go back
+                  return true;
+                }
+              }
+              
+              // No changes, allow navigation
               return true;
-            }
-          }
-          
-          // No changes, allow navigation
-          return true;
-      },
-      child: AddTaskUI(
+            },
+            child: AddTaskUI(
       taskController: _taskController,
       selectedDate: _selectedDate,
       selectedTime: _selectedTime,
@@ -367,9 +399,8 @@ class _TaskFormContentState extends State<_TaskFormContent> {
           _selectedList = value;
         });
       },
-        ),
-      ),
-    );
+            ),
+    ));
   }
 }
 

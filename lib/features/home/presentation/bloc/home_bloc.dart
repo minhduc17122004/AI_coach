@@ -110,6 +110,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         // Keep current state on error
       }
     } else {
+      developer.log('HomeBloc: Current state is not HomeLoaded: ${currentState.runtimeType}, doing full load', name: 'HomeBloc');
       // If not loaded yet, do a full load
       add(const LoadTasksEvent());
     }

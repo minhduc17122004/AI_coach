@@ -126,7 +126,7 @@ class TaskGroupView extends StatelessWidget {
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  '$currentList ($totalTasks)',
+                  '$currentList ',
                   style: TextStyle(
                     color: AppColors.textOnPrimary,
                     fontSize: 24,
