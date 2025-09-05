@@ -1,0 +1,307 @@
+---
+alwaysApply: true
+---
+ You are an expert in Flutter, Dart, Bloc/Cubit, Freezed, Flutter Hooks,
+ Firebase (Auth, Firestore, Storage, Analytics, FCM), and Hive.
+ The project is an offline-first AI Coach app:
+ - Cloud source of truth: Firestore (scoped under /users/{uid}/…)
+ - Local cache & queues: Hive (encrypted)
+ - State: flutter_bloc (Bloc for eventful, Cubit for simple)
+ - Navigation: GoRouter
+ - Clean Architecture with DI (get_it + injectable)
+
+ =======================
+ Key Engineering Principles
+ =======================
+ - Favor small, pure, composable functions. Prefer composition over inheritance.
+ - Keep widgets stateless; promote state to Cubit/Bloc.
+ - Immutability by default (Freezed for models & states).
+ - Deterministic state transitions; side-effects isolated in repositories/use cases.
+ - Offline-first: read from Hive first, then merge Firestore updates by updatedAt.
+ - Never expose secrets in client; all AI/LLM calls go through server endpoints.
+
+ =======================
+ File & Folder Structure
+ =======================
+ lib/
+  ├─ app/ (router, di, bootstrap)
+  ├─ core/ (errors, result types, theme, utils, constants)
+  ├─ features/
+  │   ├─ auth/
+  │   ├─ goals/
+  │   ├─ tasks/
+  │   ├─ plan/
+  │   ├─ coach_chat/
+  │   └─ notifications/
+  ├─ shared/ (widgets, form, platform services)
+  └─ data/ (dtos, repositories, datasources)
+
+ Per feature structure:
+ - exported widget (index.dart), subwidgets/, helpers/, static/, types/
+ - presentation/ (pages, widgets, cubit|bloc)
+ - domain/ (entities, value objects, usecases, repositories)
+ - data/ (dtos, hive_adapters, remote_ds, local_ds, repo_impl)
+
+ =======================
+ Dart/Flutter Conventions
+ =======================
+ - Use const constructors for immutable widgets.
+ - Use arrow syntax for simple methods; one-line getters/setters as expression bodies.
+ - Use trailing commas for readable diffs; keep lines ≤ 80 chars.
+ - Descriptive names with auxiliaries: isLoading, hasError, canSubmit.
+ - Prefer SizedBox.shrink() over Container() when no decoration needed.
+ - Always include errorBuilder in Image.network.
+
+ =======================
+ State Management (Bloc/Cubit)
+ =======================
+ - Cubit for local/simple state (form, toggles, filters).
+ - Bloc for event-driven flows (auth, plan generation, sync).
+ - Use Freezed to define union states; never mutate state in place.
+ - Access via context.read<T>() / context.watch<T>().
+ - Keep side-effects (I/O) in repositories; Bloc only orchestrates.
+
+ Example (Cubit + Freezed):
+ ```dart
+ @freezed
+ class TodayState with _$TodayState {
+   const factory TodayState.loading() = _Loading;
+   const factory TodayState.data({
+     required DateTime date,
+     required List<Task> tasks,
+   }) = _Data;
+   const factory TodayState.failure(String message) = _Failure;
+ }
+
+ class TodayCubit extends Cubit<TodayState> {
+   TodayCubit(this._repo, this._clock) : super(const TodayState.loading());
+   final TaskRepository _repo;
+   final DateTime Function() _clock;
+
+   Future<void> load() async {
+     emit(const TodayState.loading());
+     final d = DateTime.now();
+     final res = await _repo.getTasksForDate(d);
+     res.fold(
+       (e) => emit(TodayState.failure(e.message)),
+       (tasks) => emit(TodayState.data(date: d, tasks: tasks)),
+     );
+   }
+ }
+ ```
+
+ =======================
+ Error Handling & Validation
+ =======================
+ - Represent failures in Cubit/Bloc states; never throw into the UI layer.
+ - Display errors inline using SelectableText.rich (red) instead of SnackBars.
+ - Always include empty states within the same screen.
+ - Wrap async UI with BlocBuilder + small dedicated error widgets.
+
+ Example (error text):
+ ```dart
+ class ErrorText extends StatelessWidget {
+   const ErrorText(this.message, {super.key});
+   final String message;
+   @override
+   Widget build(BuildContext context) => SelectableText.rich(
+     TextSpan(
+       text: message,
+       style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+             color: Colors.red,
+             fontWeight: FontWeight.w600,
+           ),
+     ),
+   );
+ }
+ ```
+
+ =======================
+ Navigation
+ =======================
+ - Use GoRouter for routes & deep links. Keep route names typed.
+ - Navigation side-effects live in BlocListener (not in build()).
+
+ =======================
+ Firebase Integration
+ =======================
+ - Auth: Firebase Authentication (Google/Email).
+ - Database: Cloud Firestore with structured, normalized documents
+   under /users/{uid}/…; include createdAt, updatedAt, isDeleted.
+ - Storage: Firebase Storage for user files; path under /users/{uid}/….
+ - Analytics: Firebase Analytics events for major flows (login, plan_generate).
+ - FCM: Topic/user-scoped notifications; request permissions on onboarding.
+
+ Security Rules (Firestore):
+ ```
+ rules_version = '2';
+ service cloud.firestore {
+   match /databases/{database}/documents {
+     function isOwner(uid) {
+       return request.auth != null && request.auth.uid == uid;
+     }
+
+     match /users/{userId} {
+       allow read, write: if isOwner(userId);
+       match /{sub=**} { allow read, write: if isOwner(userId); }
+     }
+
+     match /{document=**} { allow read, write: if false; }
+   }
+ }
+ ```
+
+ Storage Rules (scoped user access):
+ ```
+ rules_version = '2';
+ service firebase.storage {
+   match /b/{bucket}/o {
+     function isOwner(uid) {
+       return request.auth != null && request.auth.uid == uid;
+     }
+     match /users/{userId}/{allPaths=**} {
+       allow read, write: if isOwner(userId);
+     }
+   }
+ }
+ ```
+
+ Query Performance:
+ - Use indexes for composite where/orderBy.
+ - Always limit() and paginate (startAfterDocument).
+ - Store denormalized counters/snapshots for dashboards.
+
+ =======================
+ Hive (Offline-first) Guidelines
+ =======================
+ - Use separate boxes per aggregate root: 'goals', 'tasks', 'messages'.
+ - Generate TypeAdapters; bump typeId carefully (no reuse).
+ - Encrypt boxes with a secure key in flutter_secure_storage.
+ - Persist updatedAt in UTC; merge strategy: newest wins.
+ - Maintain an "outbox" box for pending writes to Firestore on reconnect.
+
+ Example (Hive init):
+ ```dart
+ final key = await _secure.read(key: 'hive_key') ??
+   (await _generateAndStoreKey());
+ await Hive.initFlutter();
+ await Hive.openBox('goals', encryptionCipher: HiveAesCipher(key));
+ await Hive.openBox('tasks', encryptionCipher: HiveAesCipher(key));
+ ```
+
+ =======================
+ Data & Model Conventions
+ =======================
+ - Domain Entities are pure Freezed classes.
+ - DTOs use json_serializable with snake_case fields.
+ - Include createdAt, updatedAt, isDeleted in Firestore documents.
+ - @JsonKey(includeFromJson: true, includeToJson: false) for read-only fields.
+ - Enums persisted with @JsonValue(int).
+
+ Example (DTO):
+ ```dart
+ @JsonSerializable(fieldRename: FieldRename.snake, explicitToJson: true)
+ class TaskDto {
+   final String id;
+   final String goalId;
+   final String title;
+   final String description;
+   final String date; // ISO8601 day
+   final int estimatedMinutes;
+   final String status; // todo|done|skipped
+   final String createdAt;
+   final String updatedAt;
+   final bool isDeleted;
+
+   const TaskDto({/* all required */});
+   factory TaskDto.fromJson(Map<String, dynamic> json)
+     => _$TaskDtoFromJson(json);
+   Map<String, dynamic> toJson() => _$TaskDtoToJson(this);
+ }
+ ```
+
+ =======================
+ Repositories & Data Sources
+ =======================
+ - Repository abstracts domain operations (getTodayTasks, toggleDone).
+ - LocalDataSource: Hive; RemoteDataSource: Firestore.
+ - Sync policy:
+   1) Read local immediately.
+   2) Fetch remote; merge by updatedAt; write back to local.
+   3) Outbox retries on connectivity changes.
+
+ =======================
+ Error Types
+ =======================
+ - Define Failure types (NetworkFailure, AuthFailure, StorageFailure).
+ - Never leak platform exceptions to UI; map to Failure with message+code.
+ - Log with dart:developer log, not print.
+
+ =======================
+ UI & Styling
+ =======================
+ - Use Theme extensions; prefer Theme.of(context).textTheme.titleLarge
+   and headlineSmall etc. Avoid deprecated typography.
+ - Responsive with LayoutBuilder/MediaQuery; avoid magic numbers.
+ - Use RefreshIndicator for pull-to-refresh on list screens.
+ - TextFields: set capitalization, keyboardType, textInputAction properly.
+
+ =======================
+ Notifications
+ =======================
+ - Local: schedule with flutter_local_notifications from Task.date/time.
+ - Push: FCM for server-driven reminders and plan updates.
+ - All notification taps navigate via GoRouter named routes.
+
+ =======================
+ Performance
+ =======================
+ - const widgets wherever possible; avoid rebuilding large trees.
+ - Use ListView.builder/SliverList for long lists.
+ - Cache images (AssetImage, cached_network_image).
+ - Batch Firestore writes; debounce rapid updates.
+
+ =======================
+ Code Generation
+ =======================
+ - Use build_runner for Freezed & JSON code:
+   flutter pub run build_runner build --delete-conflicting-outputs
+
+ =======================
+ Testing
+ =======================
+ - Unit: use cases & repositories (mock data sources).
+ - Widget: Bloc-driven screens (loading/data/error/empty).
+ - Golden: critical widgets (cards, empty states).
+ - Integration: auth → CRUD → notifications scheduling.
+
+ =======================
+ Documentation
+ =======================
+ - Document non-obvious decisions (sync strategy, conflict resolution).
+ - Link to official Flutter, Bloc, Firebase docs when relevant.
+ - Keep README updated with environment variables and scripts.
+
+ =======================
+ Environment & Secrets
+ =======================
+ - Use --dart-define or dotenv for non-secret config (api base url).
+ - Never ship API keys; AI endpoints must be server-side.
+ - Crash-safe migrations for Hive; write export/migrate helpers.
+
+ =======================
+ Example Screen Contract (Today Page)
+ =======================
+ - Shows today's tasks from Hive instantly.
+ - Then refreshes from Firestore; merges by updatedAt; updates state.
+ - Errors displayed inline with ErrorText; empty shows friendly prompt.
+ - Actions: toggle done, add quick task, open Coach Chat.
+
+ =======================
+ Linting
+ =======================
+ - Enable flutter_lints + custom rules (prefer_const_constructors,
+   always_use_package_imports, avoid_print, directives_ordering).
+
+ End of rules.
+

@@ -1,0 +1,61 @@
+---
+description:
+globs:
+alwaysApply: true
+---
+/// =======================
+/// User Rules
+/// =======================
+///
+/// All user data must be scoped under /users/{uid}/…
+/// - Each authenticated user can only access their own subtree.
+/// - Subcollections (goals, tasks, chat_messages, progress, etc.)
+///   inherit the same ownership check.
+/// - No direct root-level collections outside /users allowed.
+/// - Always include createdAt, updatedAt, isDeleted in documents.
+/// - Storage files must be stored under /users/{uid}/… as well.
+///
+
+/// Firestore security rules:
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
+
+      // All subcollections (goals, tasks, chat_messages, progress, etc.)
+      match /{sub=**} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // Deny any other root-level collections
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
+
+/// Firebase Storage security rules:
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // User files stored under /users/{uid}/…
+    match /users/{userId}/{allPaths=**} {
+      allow read, write: if isOwner(userId);
+    }
+
+    // Block other paths
+    match /{path=**} {
+      allow read, write: if false;
+    }
+  }
+}
