@@ -22,43 +22,84 @@ class CustomAppBar extends StatelessWidget implements PreferredSizeWidget {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      backgroundColor: AppColors.primary,
-      elevation: 0,
-      titleSpacing: 0,
-      leading: leadingIcon ?? 
-          (showBackButton
-              ? IconButton(
-                  icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
-                  onPressed: () => Navigator.of(context).pop(),
-                )
-              : null),
-      title: Padding(
-        padding: const EdgeInsets.only(left: 8),
-        child: titleWidget ?? Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              title!,
-              style: const TextStyle(
-                color: AppColors.textOnPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
-            if (subtitle != null)
-              Text(
-                subtitle!,
-                style: const TextStyle(
-                  color: AppColors.textSecondary,
-                  fontSize: 14,
-                ),
-              ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            AppColors.primary,
+            AppColors.secondary,
           ],
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+            spreadRadius: 1,
+          ),
+        ],
       ),
-      actions: actions,
+      child: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 0,
+        leading: leadingIcon ?? 
+            (showBackButton
+                ? Container(
+                    margin: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.2),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: IconButton(
+                      icon: const Icon(Icons.arrow_back, color: AppColors.textOnPrimary),
+                      onPressed: () => Navigator.of(context).pop(),
+                    ),
+                  )
+                : null),
+        title: Padding(
+          padding: const EdgeInsets.only(left: 8),
+          child: titleWidget ?? Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title!,
+                style: const TextStyle(
+                  color: AppColors.textOnPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+              if (subtitle != null)
+                Text(
+                  subtitle!,
+                  style: TextStyle(
+                    color: AppColors.textOnPrimary.withValues(alpha: 0.8),
+                    fontSize: 14,
+                    fontWeight: FontWeight.w400,
+                  ),
+                ),
+            ],
+          ),
+        ),
+        actions: actions?.map((action) {
+          if (action is IconButton) {
+            return Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: action,
+            );
+          }
+          return action;
+        }).toList(),
+      ),
     );
   }
 
@@ -124,62 +165,114 @@ class _SearchableAppBarState extends State<SearchableAppBar> {
 
   @override
   Widget build(BuildContext context) {
-    return AppBar(
-      automaticallyImplyLeading: false,
-      backgroundColor: AppColors.primary,
-      elevation: 0,
-      titleSpacing: 0,
-      title: _isSearching 
-        ? Container(
-            margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: TextField(
-              controller: _searchController,
-              autofocus: true,
-              onChanged: widget.onSearchChanged,
-              style: const TextStyle(color: AppColors.textOnPrimary),
-              decoration: InputDecoration(
-                hintText: widget.searchHint,
-                hintStyle: TextStyle(
-                  color: AppColors.textOnPrimary.withValues(alpha: 0.7),
-                ),
-                prefixIcon: Icon(
-                  Icons.search,
-                  color: AppColors.textOnPrimary.withValues(alpha: 0.7),
-                ),
-                border: InputBorder.none,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-              ),
-            ),
-          )
-        : Padding(
-            padding: const EdgeInsets.only(left: 16),
-            child: Text(
-              widget.title,
-              style: const TextStyle(
-                color: AppColors.textOnPrimary,
-                fontSize: 20,
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.centerLeft,
+          end: Alignment.centerRight,
+          colors: [
+            AppColors.primary,
+            AppColors.secondary,
+          ],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.3),
+            blurRadius: 15,
+            offset: const Offset(0, 5),
+            spreadRadius: 1,
           ),
-      actions: [
-        if (_isSearching)
-          IconButton(
-            onPressed: _stopSearch,
-            icon: const Icon(Icons.close, color: AppColors.textOnPrimary),
-          )
-        else ...[
-          IconButton(
-            onPressed: _startSearch,
-            icon: const Icon(Icons.search, color: AppColors.textOnPrimary),
-          ),
-          if (widget.actions != null) ...widget.actions!,
         ],
-      ],
+      ),
+      child: AppBar(
+        automaticallyImplyLeading: false,
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        titleSpacing: 0,
+        title: _isSearching 
+          ? Container(
+              margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.2),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.white.withValues(alpha: 0.3),
+                  width: 1,
+                ),
+              ),
+              child: TextField(
+                controller: _searchController,
+                autofocus: true,
+                onChanged: widget.onSearchChanged,
+                style: const TextStyle(color: AppColors.textOnPrimary),
+                decoration: InputDecoration(
+                  hintText: widget.searchHint,
+                  hintStyle: TextStyle(
+                    color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+                  ),
+                  prefixIcon: Icon(
+                    Icons.search,
+                    color: AppColors.textOnPrimary.withValues(alpha: 0.7),
+                  ),
+                  border: InputBorder.none,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                ),
+              ),
+            )
+          : Padding(
+              padding: const EdgeInsets.only(left: 16),
+              child: Text(
+                widget.title,
+                style: const TextStyle(
+                  color: AppColors.textOnPrimary,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
+        actions: [
+          if (_isSearching)
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: _stopSearch,
+                icon: const Icon(Icons.close, color: AppColors.textOnPrimary),
+              ),
+            )
+          else ...[
+            Container(
+              margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: IconButton(
+                onPressed: _startSearch,
+                icon: const Icon(Icons.search, color: AppColors.textOnPrimary),
+              ),
+            ),
+            if (widget.actions != null) 
+              ...widget.actions!.map((action) {
+                if (action is IconButton) {
+                  return Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: action,
+                  );
+                }
+                return action;
+              }),
+          ],
+        ],
+      ),
     );
   }
 }

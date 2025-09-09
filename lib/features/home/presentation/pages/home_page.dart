@@ -20,6 +20,12 @@ import 'package:taskaholic/features/category/presentation/widgets/add_category_d
 import 'package:taskaholic/features/task/domain/entities/task_entity.dart';
 import 'package:taskaholic/shared/widgets/default_bottom_bar.dart';
 
+// Auth imports for logout functionality
+import 'package:taskaholic/features/auth/presentation/bloc/auth_bloc.dart';
+import 'package:taskaholic/features/auth/presentation/bloc/auth_event.dart';
+import 'package:taskaholic/features/auth/presentation/bloc/auth_state.dart';
+import 'package:taskaholic/features/auth/presentation/pages/login/login_page.dart';
+
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
@@ -77,6 +83,7 @@ class _HomePageContent extends StatelessWidget {
     return BlocBuilder<HomeBloc, HomeState>(
       builder: (context, state) {
         return Scaffold(
+          backgroundColor: AppColors.background,
           appBar: CustomAppBar(
             title: (getCurrentIndex(state) == 0 || getCurrentIndex(state) == 1) ? null : _titles[getCurrentIndex(state)],
             titleWidget: (getCurrentIndex(state) == 0 || getCurrentIndex(state) == 1) 
@@ -127,6 +134,13 @@ class _HomePageContent extends StatelessWidget {
                   onPressed: () => _showAddCategoryDialog(context),
                   icon: const Icon(Icons.add, color: AppColors.textOnPrimary),
                   tooltip: 'Thêm danh mục',
+                ),
+              ],
+              if (getCurrentIndex(state) == 3) ...[
+                IconButton(
+                  onPressed: () => _handleLogout(context),
+                  icon: const Icon(Icons.logout, color: AppColors.textOnPrimary),
+                  tooltip: 'Đăng xuất',
                 ),
               ],
             ],
@@ -180,6 +194,69 @@ class _HomePageContent extends StatelessWidget {
             ),
           );
         },
+      ),
+    );
+  }
+
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Đăng xuất',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: const Text(
+          'Bạn có chắc chắn muốn đăng xuất khỏi ứng dụng?',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          BlocListener<AuthBloc, AuthState>(
+            listener: (context, state) {
+              if (state is Unauthenticated) {
+                // Close dialog first
+                Navigator.of(context).pop();
+                // Navigate to login page
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(builder: (_) => const LoginPage()),
+                  (route) => false,
+                );
+              } else if (state is AuthError) {
+                // Close dialog and show error
+                Navigator.of(context).pop();
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Lỗi đăng xuất: ${state.message}'),
+                    backgroundColor: AppColors.error,
+                  ),
+                );
+              }
+            },
+            child: TextButton(
+              onPressed: () {
+                context.read<AuthBloc>().add(SignOutEvent());
+              },
+              child: const Text(
+                'Đăng xuất',
+                style: TextStyle(color: AppColors.error),
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -238,7 +315,7 @@ class _HomeTab extends StatelessWidget {
             Text(
               'Lỗi: ${errorState.message}',
               style: const TextStyle(
-                color: AppColors.textPrimaryDark,
+                color: AppColors.textPrimary,
                 fontSize: 16,
               ),
               textAlign: TextAlign.center,
@@ -298,47 +375,105 @@ class _HomeTab extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
       decoration: BoxDecoration(
-        color: AppColors.surface.withValues(alpha: 0.1),
-        borderRadius: BorderRadius.circular(12),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            AppColors.primary.withValues(alpha: 0.05),
+            AppColors.secondary.withValues(alpha: 0.03),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: AppColors.primary.withValues(alpha: 0.3),
-          width: 1,
+          color: AppColors.primary.withValues(alpha: 0.2),
+          width: 1.5,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: AppColors.primary.withValues(alpha: 0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+            spreadRadius: 1,
+          ),
+        ],
       ),
-      child: ListTile(
-        leading: Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: AppColors.primary.withValues(alpha: 0.2),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Icon(
-            Icons.add,
-            color: AppColors.primary,
-            size: 24,
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => _handleAddTask(context, selectedCategoryId),
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: [
+                        AppColors.primary.withValues(alpha: 0.2),
+                        AppColors.secondary.withValues(alpha: 0.15),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                    boxShadow: [
+                      BoxShadow(
+                        color: AppColors.primary.withValues(alpha: 0.2),
+                        blurRadius: 8,
+                        offset: const Offset(0, 2),
+                      ),
+                    ],
+                  ),
+                  child: const Icon(
+                    Icons.add_circle_outline,
+                    color: AppColors.primary,
+                    size: 28,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text(
+                        'Thêm nhiệm vụ mới',
+                        style: TextStyle(
+                          color: AppColors.textPrimary,
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        'Tạo nhiệm vụ trong ${selectedCategoryId == 'all' ? 'bất kỳ danh mục nào' : selectedCategoryId}',
+                        style: TextStyle(
+                          color: AppColors.textSecondary,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w400,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: const Icon(
+                    Icons.arrow_forward_ios,
+                    color: AppColors.primary,
+                    size: 16,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
-        title: const Text(
-          'Thêm nhiệm vụ mới',
-          style: TextStyle(
-            color: AppColors.textPrimaryDark,
-            fontSize: 16,
-            fontWeight: FontWeight.w500,
-          ),
-        ),
-        subtitle: Text(
-          'Tạo nhiệm vụ trong ${selectedCategoryId == 'all' ? 'bất kỳ danh mục nào bạn muốn' : selectedCategoryId}',
-          style: TextStyle(
-            color: AppColors.textSecondary,
-            fontSize: 14,
-          ),
-        ),
-        trailing: const Icon(
-          Icons.arrow_forward_ios,
-          color: AppColors.textSecondary,
-          size: 16,
-        ),
-        onTap: () => _handleAddTask(context, selectedCategoryId),
       ),
     );
   }
@@ -385,33 +520,82 @@ class _SettingsTab extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Center(
-      child: Column(
-        mainAxisAlignment: MainAxisAlignment.center,
-        children: [
-          Icon(
-            Icons.settings,
-            size: 80,
-            color: AppColors.primary,
-          ),
-          SizedBox(height: 20),
-          Text(
-            'Cài đặt',
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: AppColors.textPrimaryDark,
+    return Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topCenter,
+          end: Alignment.bottomCenter,
+          colors: [
+            AppColors.background,
+            AppColors.cardBackground,
+            AppColors.background,
+          ],
+          stops: const [0.0, 0.5, 1.0],
+        ),
+      ),
+      child: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    AppColors.primary.withValues(alpha: 0.1),
+                    AppColors.secondary.withValues(alpha: 0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(25),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.primary.withValues(alpha: 0.15),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                    spreadRadius: 3,
+                  ),
+                ],
+              ),
+              child: const Icon(
+                Icons.settings,
+                size: 80,
+                color: AppColors.primary,
+              ),
             ),
-          ),
-          SizedBox(height: 10),
-          Text(
-            'Tùy chỉnh ứng dụng',
-            style: TextStyle(
-              fontSize: 16,
-              color: AppColors.textSecondaryDark,
+            const SizedBox(height: 30),
+            ShaderMask(
+              shaderCallback: (bounds) => LinearGradient(
+                colors: [
+                  AppColors.primary,
+                  AppColors.secondary,
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ).createShader(bounds),
+              child: const Text(
+                'Cài đặt',
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  letterSpacing: 1.5,
+                ),
+              ),
             ),
-          ),
-        ],
+            const SizedBox(height: 15),
+            Text(
+              'Tùy chỉnh ứng dụng thông minh',
+              style: TextStyle(
+                fontSize: 16,
+                color: AppColors.textSecondary,
+                fontWeight: FontWeight.w500,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }

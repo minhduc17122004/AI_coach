@@ -16,10 +16,13 @@ class EmailInput extends StatelessWidget {
     return TextFormField(
       controller: controller,
       keyboardType: TextInputType.emailAddress,
+      style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: 'Email',
-        labelStyle: const TextStyle(color: AppColors.textPrimaryDark),
-        prefixIcon: const Icon(Icons.email),
+        labelStyle: const TextStyle(color: AppColors.textSecondary),
+        prefixIcon: const Icon(Icons.email, color: AppColors.textSecondary),
+        fillColor: AppColors.inputBackground,
+        filled: true,
         enabledBorder: _border(),
         focusedBorder: _focusedBorder(),
         errorBorder: _errorBorder(),
@@ -31,7 +34,7 @@ class EmailInput extends StatelessWidget {
 
   OutlineInputBorder _border() => OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBackgroundDark),
+        borderSide: const BorderSide(color: AppColors.inputBorder),
       );
 
   OutlineInputBorder _focusedBorder() => OutlineInputBorder(

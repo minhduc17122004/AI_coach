@@ -1,14 +1,17 @@
 import 'package:flutter/material.dart';
 
 class AppColors {
-  // Light theme colors
+  // Light theme colors (Updated for white theme)
   static const Color primary = Color(0xFF2196F3);
   static const Color primaryLight = Color(0xFF64B5F6);
   static const Color secondary = Color(0xFF03DAC6);
-  static const Color error = Color(0xFFB00020);
+  static const Color error = Color(0xFFE53935);
+  static const Color success = Color(0xFF4CAF50);
+  static const Color warning = Color(0xFFFF9800);
   static const Color surface = Color(0xFFFFFFFF);
-  static const Color background = Color(0xFFF5F5F5);
-  static const Color cardBackground = Color(0xFFFFFFFF);
+  static const Color background = Color(0xFFFFFFFF);
+  static const Color cardBackground = Color(0xFFFAFAFA);
+  static const Color divider = Color(0xFFE0E0E0);
   
 
   // Dark theme colors
@@ -22,15 +25,17 @@ class AppColors {
   static const Color textPrimary = Color(0xFF212121);
   static const Color textSecondary = Color(0xFF757575);
   static const Color textOnPrimary = Color(0xFFFFFFFF);
+  static const Color textHint = Color(0xFF9E9E9E);
   
   // Text colors (Dark theme)
   static const Color textPrimaryDark = Color(0xFFFFFFFF);
   static const Color textSecondaryDark = Color(0xFFBBBBBB);
   
-  // Input colors (Light theme)
-  static const Color inputBackground = Color(0xFFFFFFFF);
-  static const Color inputBorder = Color(0xFFBDBDBD);
-  static const Color border = Color(0xFFBDBDBD);
+  // Input colors (Light theme) - Updated for better light theme
+  static const Color inputBackground = Color(0xFFFAFAFA);
+  static const Color inputBorder = Color(0xFFE0E0E0);
+  static const Color inputBorderFocused = Color(0xFF2196F3);
+  static const Color border = Color(0xFFE0E0E0);
   
   // Input colors (Dark theme)
   static const Color inputBackgroundDark = Color(0xFF014F8A);

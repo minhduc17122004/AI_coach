@@ -21,7 +21,7 @@ class PasswordInput extends StatelessWidget {
 
   OutlineInputBorder _defaultBorder() => OutlineInputBorder(
         borderRadius: BorderRadius.circular(12),
-        borderSide: const BorderSide(color: AppColors.inputBackgroundDark),
+        borderSide: const BorderSide(color: AppColors.inputBorder),
       );
 
   OutlineInputBorder _focusedBorder() => OutlineInputBorder(
@@ -39,18 +39,20 @@ class PasswordInput extends StatelessWidget {
     return TextFormField(
       controller: controller,
       obscureText: !isVisible,
-      style: const TextStyle(color: AppColors.background),
+      style: const TextStyle(color: AppColors.textPrimary),
       decoration: InputDecoration(
         labelText: label,
-        labelStyle: const TextStyle(color: AppColors.textPrimaryDark),
-        prefixIcon: const Icon(Icons.lock, color: AppColors.textPrimaryDark),
+        labelStyle: const TextStyle(color: AppColors.textSecondary),
+        prefixIcon: const Icon(Icons.lock, color: AppColors.textSecondary),
         suffixIcon: IconButton(
           icon: Icon(
             isVisible ? Icons.visibility : Icons.visibility_off,
-            color: AppColors.textPrimaryDark,
+            color: AppColors.textSecondary,
           ),
           onPressed: onToggle,
         ),
+        fillColor: AppColors.inputBackground,
+        filled: true,
         enabledBorder: _defaultBorder(),
         focusedBorder: _focusedBorder(),
         errorBorder: _errorBorder(),
