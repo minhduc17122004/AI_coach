@@ -15,8 +15,8 @@ import 'package:taskaholic/features/home/presentation/bloc/home_bloc.dart';
 import 'package:taskaholic/features/home/presentation/bloc/home_event.dart';
 import 'package:taskaholic/features/home/presentation/bloc/home_state.dart';
 import 'package:taskaholic/features/home/presentation/pages/completed_page.dart';
-import 'package:taskaholic/features/category/presentation/pages/category_page.dart';
-import 'package:taskaholic/features/category/presentation/widgets/add_category_dialog.dart';
+import 'package:taskaholic/features/chat/presentation/pages/category_page.dart';
+import 'package:taskaholic/features/chat/presentation/widgets/add_category_dialog.dart';
 import 'package:taskaholic/features/task/domain/entities/task_entity.dart';
 import 'package:taskaholic/shared/widgets/default_bottom_bar.dart';
 
@@ -43,9 +43,9 @@ class _HomePageContent extends StatelessWidget {
 
   static const List<String> _titles = [
     'Trang chủ',
-    'Hoàn thành',
-    'Danh mục',
-    'Cài đặt',
+    'Kế hoạch',
+    'Trò chuyện',
+    'Hồ sơ',
   ];
 
   Widget _getPageAtIndex(int index, HomeState state) {
@@ -57,7 +57,7 @@ class _HomePageContent extends StatelessWidget {
       case 2:
         return const CategoryContent();
       case 3:
-        return const _SettingsTab();
+        return const _ProfileTab();
       default:
         return _HomeTab(homeState: state);
     }
@@ -68,11 +68,11 @@ class _HomePageContent extends StatelessWidget {
       case 0:
         return const Icon(Icons.home, color: AppColors.textOnPrimary, size: 28);
       case 1:
-        return const Icon(Icons.check_circle, color: AppColors.textOnPrimary, size: 28);
+        return const Icon(Icons.calendar_today_outlined, color: AppColors.textOnPrimary, size: 28);
       case 2:
-        return const Icon(Icons.category, color: AppColors.textOnPrimary, size: 28);
+        return const Icon(Icons.chat_bubble_outline, color: AppColors.textOnPrimary, size: 28);
       case 3:
-        return const Icon(Icons.settings, color: AppColors.textOnPrimary, size: 28);
+        return const Icon(Icons.person_outline, color: AppColors.textOnPrimary, size: 28);
       default:
         return const Icon(Icons.home, color: AppColors.textOnPrimary, size: 28);
     }
@@ -515,8 +515,8 @@ class _HomeTab extends StatelessWidget {
 }
 
 // TODO: Implement settings tab
-class _SettingsTab extends StatelessWidget {
-  const _SettingsTab();
+class _ProfileTab extends StatelessWidget {
+  const _ProfileTab();
 
   @override
   Widget build(BuildContext context) {
@@ -559,7 +559,7 @@ class _SettingsTab extends StatelessWidget {
                 ],
               ),
               child: const Icon(
-                Icons.settings,
+                Icons.person_outline,
                 size: 80,
                 color: AppColors.primary,
               ),
@@ -575,7 +575,7 @@ class _SettingsTab extends StatelessWidget {
                 end: Alignment.centerRight,
               ).createShader(bounds),
               child: const Text(
-                'Cài đặt',
+                'Hồ sơ',
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.w800,
@@ -586,7 +586,7 @@ class _SettingsTab extends StatelessWidget {
             ),
             const SizedBox(height: 15),
             Text(
-              'Tùy chỉnh ứng dụng thông minh',
+              'Tùy chỉnh ứng dụng và cá nhân hóa',
               style: TextStyle(
                 fontSize: 16,
                 color: AppColors.textSecondary,

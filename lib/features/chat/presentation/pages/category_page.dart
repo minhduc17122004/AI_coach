@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:taskaholic/core/themes/app_color.dart';
 import 'package:taskaholic/core/utils/category_constants.dart';
 import 'package:taskaholic/features/home/presentation/widgets/app_bar.dart';
-import 'package:taskaholic/features/category/presentation/widgets/add_category_dialog.dart';
+import 'package:taskaholic/features/chat/presentation/widgets/add_category_dialog.dart';
 
 /// Standalone page with AppBar for direct navigation
 class CategoryPage extends StatelessWidget {
@@ -56,8 +56,8 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
     return Scaffold(
       backgroundColor: AppColors.backgroundDark,
       appBar: SearchableAppBar(
-        title: 'Danh mục',
-        searchHint: 'Tìm kiếm danh mục...',
+        title: 'Trò chuyện',
+        searchHint: 'Tìm kiếm trò chuyện...',
         onSearchChanged: (query) {
           setState(() {
             _searchQuery = query;
@@ -68,7 +68,7 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
           IconButton(
             onPressed: _showAddCategoryDialog,
             icon: const Icon(Icons.add, color: AppColors.textOnPrimary),
-            tooltip: 'Thêm danh mục',
+            tooltip: 'Thêm trò chuyện',
           ),
         ],
       ),
@@ -114,7 +114,7 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
           ),
           const SizedBox(height: 16),
           Text(
-            'Không tìm thấy danh mục',
+            'Không tìm thấy trò chuyện',
             style: TextStyle(
               fontSize: 18,
               fontWeight: FontWeight.w600,
@@ -138,7 +138,7 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
     // TODO: Navigate to category tasks or show category actions
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đã chọn danh mục: ${category.name}'),
+        content: Text('Đã chọn trò chuyện: ${category.name}'),
         backgroundColor: category.color,
         duration: const Duration(seconds: 1),
       ),
@@ -153,7 +153,7 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
           // TODO: Add category to state/bloc
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
-              content: Text('Đã thêm danh mục: $categoryName'),
+              content: Text('Đã thêm trò chuyện: $categoryName'),
               backgroundColor: AppColors.primary,
               duration: const Duration(seconds: 2),
             ),
@@ -192,8 +192,8 @@ class _CategoryContentState extends State<CategoryContent> {
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: [
-            AppColors.backgroundDark.withValues(alpha: 0.9),
-            AppColors.backgroundDark,
+            AppColors.background.withValues(alpha: 0.9),
+            AppColors.background,
           ],
         ),
       ),
@@ -217,7 +217,7 @@ class _CategoryContentState extends State<CategoryContent> {
     // TODO: Navigate to category tasks or show category actions
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text('Đã chọn danh mục: ${category.name}'),
+        content: Text('Đã chọn trò chuyện: ${category.name}'),
         backgroundColor: category.color,
         duration: const Duration(seconds: 1),
       ),
@@ -243,7 +243,7 @@ class CategoryCard extends StatelessWidget {
     return Container(
       margin: const EdgeInsets.only(bottom: 12),
       decoration: BoxDecoration(
-        color: AppColors.cardBackgroundDark,
+        color: AppColors.cardBackground,
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: category.color.withValues(alpha: 0.2),
@@ -287,14 +287,14 @@ class CategoryCard extends StatelessWidget {
                     Text(
                       category.name,
                       style: const TextStyle(
-                        color: AppColors.textOnPrimary,
+                        color: AppColors.categoryFinance,
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
                       ),
                     ),
                     const SizedBox(height: 4),
                     Text(
-                      '$taskCount công việc',
+                      '$taskCount tin nhắn',
                       style: const TextStyle(
                         color: AppColors.textSecondary,
                         fontSize: 14,
@@ -346,7 +346,7 @@ class CategoryStats extends StatelessWidget {
         children: [
           Expanded(
             child: _buildStatItem(
-              'Tổng nhiệm vụ',
+              'Tổng tin nhắn',
               totalTasks.toString(),
               Icons.assignment,
             ),
@@ -358,7 +358,7 @@ class CategoryStats extends StatelessWidget {
           ),
           Expanded(
             child: _buildStatItem(
-              'Danh mục đang dùng',
+              'Trò chuyện đang dùng',
               activeCategories.toString(),
               Icons.category,
             ),
