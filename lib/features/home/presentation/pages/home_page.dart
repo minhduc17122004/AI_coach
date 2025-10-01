@@ -15,6 +15,9 @@ import 'package:taskaholic/features/home/presentation/bloc/home_bloc.dart';
 import 'package:taskaholic/features/home/presentation/bloc/home_event.dart';
 import 'package:taskaholic/features/home/presentation/bloc/home_state.dart';
 import 'package:taskaholic/features/home/presentation/pages/completed_page.dart';
+import 'package:taskaholic/features/home/presentation/pages/search_page.dart';
+import 'package:taskaholic/features/home/presentation/pages/profile_page.dart';
+import 'package:taskaholic/features/home/presentation/pages/notifications_page.dart';
 import 'package:taskaholic/features/chat/presentation/pages/category_page.dart';
 import 'package:taskaholic/features/chat/presentation/widgets/add_category_dialog.dart';
 import 'package:taskaholic/features/task/domain/entities/task_entity.dart';
@@ -57,7 +60,7 @@ class _HomePageContent extends StatelessWidget {
       case 2:
         return const CategoryContent();
       case 3:
-        return const _ProfileTab();
+        return const ProfilePage();
       default:
         return _HomeTab(homeState: state);
     }
@@ -102,34 +105,36 @@ class _HomePageContent extends StatelessWidget {
               if (getCurrentIndex(state) == 0 || getCurrentIndex(state) == 1) ...[
                 IconButton(
                   onPressed: () {
-                    // TODO: Implement search
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tìm kiếm')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<HomeBloc>(),
+                          child: const SearchPage(),
+                        ),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.search, color: AppColors.textOnPrimary),
+                  tooltip: 'Tìm kiếm',
                 ),
                 IconButton(
                   onPressed: () {
-                    // TODO: Implement notifications
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Thông báo')),
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => BlocProvider.value(
+                          value: context.read<HomeBloc>(),
+                          child: const NotificationsPage(),
+                        ),
+                      ),
                     );
                   },
                   icon: const Icon(Icons.notifications, color: AppColors.textOnPrimary),
+                  tooltip: 'Thông báo',
                 ),
               ],
               if (getCurrentIndex(state) == 2) ...[
-                IconButton(
-                  onPressed: () {
-                    // TODO: Implement category search
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Tìm kiếm danh mục')),
-                    );
-                  },
-                  icon: const Icon(Icons.search, color: AppColors.textOnPrimary),
-                  tooltip: 'Tìm kiếm danh mục',
-                ),
                 IconButton(
                   onPressed: () => _showAddCategoryDialog(context),
                   icon: const Icon(Icons.add, color: AppColors.textOnPrimary),
@@ -511,92 +516,5 @@ class _HomeTab extends StatelessWidget {
         context.read<HomeBloc>().add(const RefreshTasksEvent());
       }
     });
-  }
-}
-
-// TODO: Implement settings tab
-class _ProfileTab extends StatelessWidget {
-  const _ProfileTab();
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            AppColors.background,
-            AppColors.cardBackground,
-            AppColors.background,
-          ],
-          stops: const [0.0, 0.5, 1.0],
-        ),
-      ),
-      child: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(20),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topLeft,
-                  end: Alignment.bottomRight,
-                  colors: [
-                    AppColors.primary.withValues(alpha: 0.1),
-                    AppColors.secondary.withValues(alpha: 0.05),
-                  ],
-                ),
-                borderRadius: BorderRadius.circular(25),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppColors.primary.withValues(alpha: 0.15),
-                    blurRadius: 20,
-                    offset: const Offset(0, 10),
-                    spreadRadius: 3,
-                  ),
-                ],
-              ),
-              child: const Icon(
-                Icons.person_outline,
-                size: 80,
-                color: AppColors.primary,
-              ),
-            ),
-            const SizedBox(height: 30),
-            ShaderMask(
-              shaderCallback: (bounds) => LinearGradient(
-                colors: [
-                  AppColors.primary,
-                  AppColors.secondary,
-                ],
-                begin: Alignment.centerLeft,
-                end: Alignment.centerRight,
-              ).createShader(bounds),
-              child: const Text(
-                'Hồ sơ',
-                style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w800,
-                  color: Colors.white,
-                  letterSpacing: 1.5,
-                ),
-              ),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              'Tùy chỉnh ứng dụng và cá nhân hóa',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppColors.textSecondary,
-                fontWeight: FontWeight.w500,
-                letterSpacing: 0.5,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }

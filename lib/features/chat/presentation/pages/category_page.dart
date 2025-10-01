@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskaholic/core/themes/app_color.dart';
 import 'package:taskaholic/core/utils/category_constants.dart';
 import 'package:taskaholic/features/home/presentation/widgets/app_bar.dart';
+import 'package:taskaholic/features/home/presentation/bloc/home_bloc.dart';
+import 'package:taskaholic/features/home/presentation/bloc/home_state.dart';
 import 'package:taskaholic/features/chat/presentation/widgets/add_category_dialog.dart';
 
 /// Standalone page with AppBar for direct navigation
@@ -26,15 +29,6 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
   final TextEditingController _searchController = TextEditingController();
   String _searchQuery = '';
 
-  // Mock task counts - TODO: Get from actual state/bloc
-  final Map<String, int> _taskCounts = {
-    'work': 1,
-    'personal': 0,
-    'study': 1,
-    'health': 1,
-    'shopping': 0,
-  };
-
   @override
   void dispose() {
     _searchController.dispose();
@@ -49,6 +43,18 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
     return taskCategories.where((category) => 
       category.name.toLowerCase().contains(_searchQuery.toLowerCase())
     ).toList();
+  }
+
+  Map<String, int> _getTaskCounts(HomeState state) {
+    final Map<String, int> taskCounts = {};
+    
+    if (state is HomeLoaded) {
+      for (var category in CategoryConstants.taskCategories) {
+        taskCounts[category.id] = state.countTasksInCategory(category.id);
+      }
+    }
+    
+    return taskCounts;
   }
 
   @override
@@ -72,32 +78,38 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
           ),
         ],
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              AppColors.backgroundDark.withValues(alpha: 0.9),
-              AppColors.backgroundDark,
-            ],
-          ),
-        ),
-        child: _filteredCategories.isEmpty 
-          ? _buildEmptyState()
-          : ListView.builder(
-              padding: const EdgeInsets.all(16),
-              itemCount: _filteredCategories.length,
-              itemBuilder: (context, index) {
-                final category = _filteredCategories[index];
-                final taskCount = _taskCounts[category.id] ?? 0;
-                return CategoryCard(
-                  category: category,
-                  taskCount: taskCount,
-                  onTap: () => _handleCategoryTap(category),
-                );
-              },
+      body: BlocBuilder<HomeBloc, HomeState>(
+        builder: (context, state) {
+          final taskCounts = _getTaskCounts(state);
+          
+          return Container(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                colors: [
+                  AppColors.backgroundDark.withValues(alpha: 0.9),
+                  AppColors.backgroundDark,
+                ],
+              ),
             ),
+            child: _filteredCategories.isEmpty 
+              ? _buildEmptyState()
+              : ListView.builder(
+                  padding: const EdgeInsets.all(16),
+                  itemCount: _filteredCategories.length,
+                  itemBuilder: (context, index) {
+                    final category = _filteredCategories[index];
+                    final taskCount = taskCounts[category.id] ?? 0;
+                    return CategoryCard(
+                      category: category,
+                      taskCount: taskCount,
+                      onTap: () => _handleCategoryTap(category),
+                    );
+                  },
+                ),
+          );
+        },
       ),
     );
   }
@@ -135,12 +147,69 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
   }
 
   void _handleCategoryTap(CategoryData category) {
-    // TODO: Navigate to category tasks or show category actions
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã chọn trò chuyện: ${category.name}'),
-        backgroundColor: category.color,
-        duration: const Duration(seconds: 1),
+    // Show category details dialog
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: category.color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                category.icon,
+                size: 48,
+                color: category.color,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              category.name,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.task_alt, color: AppColors.primary),
+              title: const Text(
+                'Xem nhiệm vụ',
+                style: TextStyle(color: AppColors.textPrimary),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Hiển thị nhiệm vụ: ${category.name}'),
+                    backgroundColor: category.color,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }
@@ -150,7 +219,7 @@ class _CategoryContentWithSearchState extends State<CategoryContentWithSearch> {
       context: context,
       builder: (context) => AddCategoryDialog(
         onCategoryAdded: (categoryName) {
-          // TODO: Add category to state/bloc
+          // Add category functionality
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text('Đã thêm trò chuyện: $categoryName'),
@@ -173,20 +242,27 @@ class CategoryContent extends StatefulWidget {
 }
 
 class _CategoryContentState extends State<CategoryContent> {
-  // Mock task counts - TODO: Get from actual state/bloc
-  final Map<String, int> _taskCounts = {
-    'work': 1,
-    'personal': 0,
-    'study': 1,
-    'health': 1,
-    'shopping': 0,
-  };
+  Map<String, int> _getTaskCounts(HomeState state) {
+    final Map<String, int> taskCounts = {};
+    
+    if (state is HomeLoaded) {
+      for (var category in CategoryConstants.taskCategories) {
+        taskCounts[category.id] = state.countTasksInCategory(category.id);
+      }
+    }
+    
+    return taskCounts;
+  }
 
   @override
   Widget build(BuildContext context) {
     final categories = CategoryConstants.taskCategories;
 
-    return Container(
+    return BlocBuilder<HomeBloc, HomeState>(
+      builder: (context, state) {
+        final taskCounts = _getTaskCounts(state);
+        
+        return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -197,29 +273,88 @@ class _CategoryContentState extends State<CategoryContent> {
           ],
         ),
       ),
-      child: ListView.builder(
-        padding: const EdgeInsets.all(16),
-        itemCount: categories.length,
-        itemBuilder: (context, index) {
-          final category = categories[index];
-          final taskCount = _taskCounts[category.id] ?? 0;
-          return CategoryCard(
-            category: category,
-            taskCount: taskCount,
-            onTap: () => _handleCategoryTap(category),
-          );
-        },
-      ),
+          child: ListView.builder(
+            padding: const EdgeInsets.all(16),
+            itemCount: categories.length,
+            itemBuilder: (context, index) {
+              final category = categories[index];
+              final taskCount = taskCounts[category.id] ?? 0;
+              return CategoryCard(
+                category: category,
+                taskCount: taskCount,
+                onTap: () => _handleCategoryTap(category),
+              );
+            },
+          ),
+        );
+      },
     );
   }
 
   void _handleCategoryTap(CategoryData category) {
-    // TODO: Navigate to category tasks or show category actions
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Đã chọn trò chuyện: ${category.name}'),
-        backgroundColor: category.color,
-        duration: const Duration(seconds: 1),
+    // Show category details
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: category.color.withValues(alpha: 0.2),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                category.icon,
+                size: 48,
+                color: category.color,
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              category.name,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.task_alt, color: AppColors.primary),
+              title: const Text(
+                'Xem nhiệm vụ',
+                style: TextStyle(color: AppColors.textPrimary),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Hiển thị nhiệm vụ: ${category.name}'),
+                    backgroundColor: category.color,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
+        ),
       ),
     );
   }

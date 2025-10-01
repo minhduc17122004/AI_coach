@@ -7,13 +7,11 @@ import 'package:taskaholic/features/task/presentation/bloc/task_bloc.dart';
 import 'package:taskaholic/features/task/presentation/bloc/task_event.dart';
 import 'package:taskaholic/features/home/presentation/pages/home_page.dart';
 
-// Auth feature - Now implemented
+// Auth feature - Implemented
 import 'package:taskaholic/features/auth/presentation/bloc/auth_bloc.dart';
 import 'package:taskaholic/features/auth/presentation/bloc/auth_event.dart';
-
-// TODO: Uncomment when these features are implemented
-// import 'package:taskaholic/features/home/presentation/bloc/home_bloc.dart';
-// import 'package:taskaholic/features/home/presentation/bloc/home_event.dart';
+import 'package:taskaholic/features/auth/presentation/bloc/auth_state.dart';
+import 'package:taskaholic/features/auth/presentation/pages/login/login_page.dart';
 
 
 class App extends StatelessWidget {
@@ -28,49 +26,41 @@ class App extends StatelessWidget {
           create: (context) => di.sl<TaskBloc>()..add(const LoadTasksEvent()),
         ),
         
-        // Auth BLoC - Now implemented
+        // Auth BLoC - Implemented
         BlocProvider<AuthBloc>(
           create: (context) => di.sl<AuthBloc>()..add(CheckAuthStatusEvent()),
         ),
-        
-        // TODO: Uncomment when these features are implemented
-        // BlocProvider<HomeBloc>(
-        //   create: (context) => di.sl<HomeBloc>()..add(const LoadHomeDataEvent()),
-        // ),
-        // BlocProvider<CategoryBloc>(
-        //   create: (context) => di.sl<CategoryBloc>()..add(const LoadCategoriesEvent()),
-        // ),
       ],
       child: MaterialApp(
         title: 'Taskaholic',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
-        themeMode: ThemeMode.dark, // Using dark theme as per the existing UI colors
+        themeMode: ThemeMode.dark,
         
         // Route configuration
         onGenerateRoute: AppRouter.generateRoute,
-        initialRoute: AppRoutes.home, // TODO: Change to AppRouter.getInitialRoute() when auth is implemented
         
-        // TODO: Replace with proper auth flow when AuthBloc is implemented
-        home: const HomePage(),
-        
-        // TODO: Uncomment when AuthBloc is implemented
-        // home: BlocBuilder<AuthBloc, AuthState>(
-        //   builder: (context, state) {
-        //     if (state is AuthLoading) {
-        //       return const Scaffold(
-        //         body: Center(
-        //           child: CircularProgressIndicator(),
-        //         ),
-        //       );
-        //     } else if (state is Authenticated) {
-        //       return const HomePage();
-        //     } else {
-        //       return const LoginPage();
-        //     }
-        //   },
-        // ),
+        // Auth flow implementation
+        home: BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, state) {
+            if (state is AuthLoading || state is AuthInitial) {
+              return const Scaffold(
+                backgroundColor: AppColors.background,
+                body: Center(
+                  child: CircularProgressIndicator(
+                    color: AppColors.primary,
+                  ),
+                ),
+              );
+            } else if (state is Authenticated) {
+              return const HomePage();
+            } else {
+              // Unauthenticated or AuthError
+              return const LoginPage();
+            }
+          },
+        ),
       ),
     );
   }

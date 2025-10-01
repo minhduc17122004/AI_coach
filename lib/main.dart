@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:taskaholic/core/di/di.dart' as di;
+import 'package:taskaholic/core/services/notification_service.dart';
 import 'package:taskaholic/app.dart';
 
 void main() async {
@@ -27,6 +28,11 @@ void main() async {
     // Initialize dependency injection
     await di.init();
     developer.log('Dependency injection initialized successfully', name: 'Main');
+    
+    // Initialize notification service
+    final notificationService = di.sl<NotificationService>() as NotificationServiceImpl;
+    await notificationService.initialize();
+    developer.log('Notification service initialized successfully', name: 'Main');
     
     runApp(const App());
   } catch (e, stackTrace) {
