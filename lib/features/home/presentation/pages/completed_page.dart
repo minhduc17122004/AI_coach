@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:taskaholic/core/themes/app_color.dart';
+import 'package:taskaholic/core/routes/app_routes.dart';
+import 'package:taskaholic/core/di/di.dart';
 import 'package:taskaholic/core/utils/category_constants.dart';
 import 'package:taskaholic/features/home/presentation/widgets/empty_state.dart';
 import 'package:taskaholic/features/home/presentation/widgets/task_group.dart';
@@ -9,6 +11,8 @@ import 'package:taskaholic/features/home/presentation/bloc/home_state.dart';
 import 'package:taskaholic/features/home/presentation/bloc/home_event.dart';
 import 'package:taskaholic/features/task/presentation/pages/task_form_page.dart';
 import 'package:taskaholic/features/task/domain/entities/task_entity.dart';
+import 'package:taskaholic/features/task/presentation/bloc/task_bloc.dart';
+import 'package:taskaholic/features/task/presentation/bloc/task_event.dart' as task_events;
 
 // Shared content widget that can be used in both standalone page and as tab content
 class CompletedContent extends StatelessWidget {
@@ -196,26 +200,186 @@ class CompletedContent extends StatelessWidget {
   }
 
   void _handleTaskTap(BuildContext context, TaskEntity task) {
-    // TODO: Navigate to task detail or edit page
-    Navigator.push(
-      context,
-      MaterialPageRoute(
-        builder: (context) => TaskFormPage(
-          // TODO: Add editing support
-          initialCategory: task.category,
+    // Show action bottom sheet for completed tasks
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (context) => Container(
+        decoration: BoxDecoration(
+          color: AppColors.surface,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+        ),
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Container(
+              width: 40,
+              height: 4,
+              decoration: BoxDecoration(
+                color: AppColors.textSecondary.withValues(alpha: 0.3),
+                borderRadius: BorderRadius.circular(2),
+              ),
+            ),
+            const SizedBox(height: 24),
+            Text(
+              task.title,
+              style: const TextStyle(
+                color: AppColors.textPrimary,
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 24),
+            ListTile(
+              leading: const Icon(Icons.restore, color: AppColors.primary),
+              title: const Text(
+                'Khôi phục nhiệm vụ',
+                style: TextStyle(color: AppColors.textPrimary),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _handleRestoreTask(context, task);
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.edit, color: AppColors.secondary),
+              title: const Text(
+                'Chỉnh sửa',
+                style: TextStyle(color: AppColors.textPrimary),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                Navigator.pushNamed(
+                  context,
+                  AppRoutes.taskEdit,
+                  arguments: task,
+                ).then((_) {
+                  context.read<HomeBloc>().add(const RefreshTasksEvent());
+                });
+              },
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete, color: AppColors.error),
+              title: const Text(
+                'Xóa vĩnh viễn',
+                style: TextStyle(color: AppColors.error),
+              ),
+              onTap: () {
+                Navigator.pop(context);
+                _handleDeleteTask(context, task);
+              },
+            ),
+            const SizedBox(height: 16),
+          ],
         ),
       ),
-    ).then((_) {
-      context.read<HomeBloc>().add(const RefreshTasksEvent());
+    );
+  }
+
+  void _handleRestoreTask(BuildContext context, TaskEntity task) {
+    // Toggle task completion status (restore)
+    final taskBloc = sl<TaskBloc>();
+    taskBloc.add(task_events.ToggleTaskEvent(task.id));
+    
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Đã khôi phục: ${task.title}'),
+        backgroundColor: AppColors.primary,
+        duration: const Duration(seconds: 2),
+        action: SnackBarAction(
+          label: 'Hoàn tác',
+          textColor: AppColors.textOnPrimary,
+          onPressed: () {
+            // Toggle back
+            taskBloc.add(task_events.ToggleTaskEvent(task.id));
+            Future.delayed(const Duration(milliseconds: 500), () {
+              if (context.mounted) {
+                context.read<HomeBloc>().add(const RefreshTasksEvent());
+              }
+            });
+          },
+        ),
+      ),
+    );
+    
+    // Refresh tasks to show updated state
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (context.mounted) {
+        context.read<HomeBloc>().add(const RefreshTasksEvent());
+      }
     });
   }
 
+  void _handleDeleteTask(BuildContext context, TaskEntity task) {
+    // Show confirmation dialog
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        title: const Text(
+          'Xóa nhiệm vụ',
+          style: TextStyle(
+            color: AppColors.textPrimary,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        content: Text(
+          'Bạn có chắc chắn muốn xóa vĩnh viễn nhiệm vụ "${task.title}"? Hành động này không thể hoàn tác.',
+          style: const TextStyle(color: AppColors.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text(
+              'Hủy',
+              style: TextStyle(color: AppColors.textSecondary),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              final taskBloc = sl<TaskBloc>();
+              taskBloc.add(task_events.DeleteTaskEvent(task.id));
+              
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text('Đã xóa: ${task.title}'),
+                  backgroundColor: AppColors.error,
+                  duration: const Duration(seconds: 2),
+                ),
+              );
+              
+              // Refresh tasks
+              Future.delayed(const Duration(milliseconds: 500), () {
+                if (context.mounted) {
+                  context.read<HomeBloc>().add(const RefreshTasksEvent());
+                }
+              });
+            },
+            child: const Text(
+              'Xóa',
+              style: TextStyle(color: AppColors.error, fontWeight: FontWeight.bold),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   void _handleTaskToggle(BuildContext context, TaskEntity task) {
-    // TODO: Implement task toggle through TaskBloc
+    // Quick toggle - restore task
+    final taskBloc = sl<TaskBloc>();
+    taskBloc.add(task_events.ToggleTaskEvent(task.id));
+    
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(
-          task.isCompleted ? 'Đã hủy hoàn thành: ${task.title}' : 'Đã hoàn thành: ${task.title}',
+          task.isCompleted ? 'Đã khôi phục: ${task.title}' : 'Đã hoàn thành: ${task.title}',
         ),
         backgroundColor: AppColors.primary,
         duration: const Duration(seconds: 2),
@@ -223,7 +387,11 @@ class CompletedContent extends StatelessWidget {
     );
     
     // Refresh tasks to show updated state
-    context.read<HomeBloc>().add(const RefreshTasksEvent());
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (context.mounted) {
+        context.read<HomeBloc>().add(const RefreshTasksEvent());
+      }
+    });
   }
 }
 

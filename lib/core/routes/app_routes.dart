@@ -2,10 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:taskaholic/features/home/presentation/pages/home_page.dart';
 import 'package:taskaholic/features/task/presentation/pages/task_form_page.dart';
 import 'package:taskaholic/features/task/domain/entities/task_entity.dart';
-
-// TODO: Uncomment when these features are implemented
-// import 'package:taskaholic/features/auth/presentation/pages/login/login_page.dart';
-// import 'package:taskaholic/features/home/presentation/pages/completed_page.dart';
+import 'package:taskaholic/features/auth/presentation/pages/login/login_page.dart';
+import 'package:taskaholic/features/home/presentation/pages/completed_page.dart';
 
 /// App route names
 class AppRoutes {
@@ -23,12 +21,11 @@ class AppRoutes {
 class AppRouter {
   static Route<dynamic> generateRoute(RouteSettings settings) {
     switch (settings.name) {
-      // TODO: Uncomment when LoginPage is implemented
-      // case AppRoutes.login:
-      //   return MaterialPageRoute(
-      //     builder: (_) => const LoginPage(),
-      //     settings: settings,
-      //   );
+      case AppRoutes.login:
+        return MaterialPageRoute(
+          builder: (_) => const LoginPage(),
+          settings: settings,
+        );
         
       case AppRoutes.home:
         return MaterialPageRoute(
@@ -54,12 +51,11 @@ class AppRouter {
           settings: settings,
         );
         
-      // TODO: Uncomment when CompletedPage is implemented
-      // case AppRoutes.completed:
-      //   return MaterialPageRoute(
-      //     builder: (_) => const CompletedPage(),
-      //     settings: settings,
-      //   );
+      case AppRoutes.completed:
+        return MaterialPageRoute(
+          builder: (_) => const CompletedPage(),
+          settings: settings,
+        );
         
       default:
         return MaterialPageRoute(
@@ -78,9 +74,10 @@ class AppRouter {
   }
   
   /// Get initial route based on authentication status
+  /// Note: This is not used anymore since we use BlocBuilder in app.dart
+  /// Keeping for reference if route-based navigation is preferred later
   static String getInitialRoute() {
-    // TODO: Check authentication status from shared preferences or secure storage
-    // For now, always start with home (until auth is implemented)
+    // Authentication check is now handled by AuthBloc in app.dart
     return AppRoutes.home;
   }
 }

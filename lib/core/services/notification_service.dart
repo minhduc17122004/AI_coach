@@ -1,4 +1,5 @@
 import 'dart:developer' as developer;
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:taskaholic/features/task/domain/entities/task_entity.dart';
 
 /// Interface for notification service
@@ -27,6 +28,9 @@ abstract class NotificationService {
 /// Implementation of notification service
 class NotificationServiceImpl implements NotificationService {
   static const String _logName = 'NotificationService';
+  
+  final FirebaseMessaging _messaging = FirebaseMessaging.instance;
+  final Map<String, DateTime> _scheduledNotifications = {};
 
   /// Chuyển đổi task ID thành notification ID hợp lệ (32-bit integer)
   int _getNotificationId(String taskId) {
@@ -34,6 +38,51 @@ class NotificationServiceImpl implements NotificationService {
     int hash = taskId.hashCode;
     // Đảm bảo giá trị dương và trong phạm vi 32-bit
     return hash.abs() % 2147483647; // 2^31 - 1
+  }
+  
+  /// Initialize Firebase Messaging
+  Future<void> initialize() async {
+    try {
+      // Request permission for iOS
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
+
+      developer.log(
+        'User granted permission: ${settings.authorizationStatus}',
+        name: _logName,
+      );
+
+      // Get FCM token
+      final token = await _messaging.getToken();
+      developer.log('FCM Token: $token', name: _logName);
+
+      // Handle foreground messages
+      FirebaseMessaging.onMessage.listen((RemoteMessage message) {
+        developer.log(
+          'Got a message whilst in the foreground!',
+          name: _logName,
+        );
+        
+        if (message.notification != null) {
+          developer.log(
+            'Message also contained a notification: ${message.notification}',
+            name: _logName,
+          );
+        }
+      });
+
+      // Handle background messages
+      FirebaseMessaging.onBackgroundMessage(_firebaseMessagingBackgroundHandler);
+    } catch (e) {
+      developer.log('Error initializing Firebase Messaging: $e', name: _logName, error: e);
+    }
   }
 
   @override
@@ -60,14 +109,11 @@ class NotificationServiceImpl implements NotificationService {
         name: _logName,
       );
 
-      // TODO: Implement với flutter_local_notifications hoặc firebase_messaging
-      // await _localNotifications.schedule(
-      //   notificationId,
-      //   title,
-      //   body,
-      //   scheduledDate,
-      //   payload: taskId,
-      // );
+      // Store scheduled notification
+      _scheduledNotifications[taskId] = scheduledDate;
+      
+      // Subscribe to topic for task notifications
+      await _messaging.subscribeToTopic('tasks');
       
       developer.log('Đã lên lịch thông báo thành công', name: _logName);
     } catch (e) {
@@ -90,8 +136,8 @@ class NotificationServiceImpl implements NotificationService {
         name: _logName,
       );
 
-      // TODO: Implement với flutter_local_notifications
-      // await _localNotifications.cancel(notificationId);
+      // Remove from scheduled notifications
+      _scheduledNotifications.remove(taskId);
       
       developer.log('Đã hủy thông báo thành công', name: _logName);
     } catch (e) {
@@ -109,8 +155,11 @@ class NotificationServiceImpl implements NotificationService {
     try {
       developer.log('Hủy tất cả thông báo', name: _logName);
 
-      // TODO: Implement với flutter_local_notifications
-      // await _localNotifications.cancelAll();
+      // Clear all scheduled notifications
+      _scheduledNotifications.clear();
+      
+      // Unsubscribe from topic
+      await _messaging.unsubscribeFromTopic('tasks');
       
       developer.log('Đã hủy tất cả thông báo thành công', name: _logName);
     } catch (e) {
@@ -122,12 +171,15 @@ class NotificationServiceImpl implements NotificationService {
   @override
   Future<bool> areNotificationsEnabled() async {
     try {
-      // TODO: Implement check permissions
-      // final settings = await _localNotifications.getNotificationAppLaunchDetails();
-      // return settings?.didNotificationLaunchApp ?? false;
+      final settings = await _messaging.getNotificationSettings();
       
-      developer.log('Checking notification permissions...', name: _logName);
-      return true; // Mock return for now
+      developer.log(
+        'Notification settings: ${settings.authorizationStatus}',
+        name: _logName,
+      );
+      
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+             settings.authorizationStatus == AuthorizationStatus.provisional;
     } catch (e) {
       developer.log('Lỗi khi kiểm tra quyền thông báo: $e', name: _logName, error: e);
       return false;
@@ -139,17 +191,37 @@ class NotificationServiceImpl implements NotificationService {
     try {
       developer.log('Yêu cầu quyền thông báo...', name: _logName);
 
-      // TODO: Implement với flutter_local_notifications
-      // final result = await _localNotifications.requestPermissions();
-      // return result ?? false;
+      final settings = await _messaging.requestPermission(
+        alert: true,
+        announcement: false,
+        badge: true,
+        carPlay: false,
+        criticalAlert: false,
+        provisional: false,
+        sound: true,
+      );
       
-      developer.log('Đã cấp quyền thông báo', name: _logName);
-      return true; // Mock return for now
+      developer.log(
+        'Permission result: ${settings.authorizationStatus}',
+        name: _logName,
+      );
+      
+      return settings.authorizationStatus == AuthorizationStatus.authorized ||
+             settings.authorizationStatus == AuthorizationStatus.provisional;
     } catch (e) {
       developer.log('Lỗi khi yêu cầu quyền thông báo: $e', name: _logName, error: e);
       return false;
     }
   }
+}
+
+/// Background message handler
+/// Must be a top-level function
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  developer.log(
+    'Handling a background message: ${message.messageId}',
+    name: 'BackgroundHandler',
+  );
 }
 
 /// Extension methods for TaskEntity notification helpers
